@@ -10,6 +10,6 @@ typedef struct Chip8
     u_int8_t SP;
     u_int8_t delay_timer;
     u_int8_t sound_timer;
-    u_int32_t video[64 * 32];
+    u_int32_t video[64][32];
     u_int16_t opcode;
 } Chip8;
