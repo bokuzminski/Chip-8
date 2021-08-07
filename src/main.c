@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
-#include "fontset.h"
 #include "chip8.h"
+#include "display.h"
 
 #undef main
 
@@ -15,145 +15,55 @@ void chip8_initialization(Chip8 *ch8, FILE *file);
 void execute_opcodes(Chip8 *ch8);
 void draw_screen(Chip8 *ch8);
 
-void DisassembleChip8Op(uint8_t *codebuffer, int pc)
-{
-    uint8_t *code = &codebuffer[pc];
-    uint8_t firstnib = (code[0] >> 4);
-
-    printf("%04x %02x %02x ", pc, code[0], code[1]);
-    switch (firstnib)
-    {
-    case 0x00:
-        printf("0 not handled yet");
-        break;
-    case 0x01:
-        printf("1 not handled yet");
-        break;
-    case 0x02:
-        printf("2 not handled yet");
-        break;
-    case 0x03:
-        printf("3 not handled yet");
-        break;
-    case 0x04:
-        printf("4 not handled yet");
-        break;
-    case 0x05:
-        printf("5 not handled yet");
-        break;
-    case 0x06:
-    {
-        uint8_t reg = code[0] & 0x0f;
-        printf("%-10s V%01X,#$%02x", "MVI", reg, code[1]);
-    }
-    break;
-    case 0x07:
-        printf("7 not handled yet");
-        break;
-    case 0x08:
-        printf("8 not handled yet");
-        break;
-    case 0x09:
-        printf("9 not handled yet");
-        break;
-    case 0x0a:
-    {
-        uint8_t addresshi = code[0] & 0x0f;
-        printf("%-10s I,#$%01x%02x", "MVI", addresshi, code[1]);
-    }
-    break;
-    case 0x0b:
-        printf("b not handled yet");
-        break;
-    case 0x0c:
-        printf("c not handled yet");
-        break;
-    case 0x0d:
-        printf("d not handled yet");
-        break;
-    case 0x0e:
-        printf("e not handled yet");
-        break;
-    case 0x0f:
-        printf("f not handled yet");
-        break;
-    }
-}
-
 int main(int argc, char *argv[])
 {
-    SDL_Event event;
-    SDL_Renderer *renderer;
-    SDL_Window *window;
-    SDL_Texture *texture;
+
     SDL_Init(SDL_INIT_EVERYTHING);
 
     Chip8 ch8;
 
     FILE *game = fopen(argv[1], "rb");
-    if (game == NULL)
-    {
-        printf("Can't open the ROM");
-    }
 
     chip8_initialization(&ch8, game);
-    SDL_CreateWindowAndRenderer(SCREEN_W, SCREEN_H, 0, &window, &renderer);
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_W, SCREEN_H);
+    Display display;
 
-    while (1)
+    if (display_init(&display))
     {
+        fprintf(stderr, "Unable to initialize the display!\n");
+        return -1;
+    }
+    uint32_t start_tick;
+    uint32_t frame_speed;
+    SDL_Event event;
+
+    bool running = true;
+
+    while (running) // main loop starts here
+    {
+        start_tick = SDL_GetTicks();
+        //execute_opcodes(&ch8);
+        if (ch8.drawScreen)
+        {
+            // display_draw(&display, ch8.video);
+            ch8.drawScreen = false;
+        }
+
+        frame_speed = SDL_GetTicks() - start_tick;
+        if (frame_speed < (1000 / 60))
+        {
+            SDL_Delay((1000 / 60) - frame_speed);
+        }
+
         while (SDL_PollEvent(&event))
         {
             if (event.type == SDL_QUIT)
             {
-                exit(1);
+                running = false;
             }
         }
-        execute_opcodes(&ch8);
-        //draw_screen(&ch8);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        int rownum = 0;
-        SDL_Rect pixel;
-        for (int y = 0; y < 32; ++y)
-        {
-            for (int x = 0; x < 64; ++x)
-            {
-
-                pixel.x = x * SCREEN_W / 64;
-                pixel.y = y * SCREEN_H / 32;
-                pixel.w = 10;
-                pixel.h = 10;
-                rownum = y * 64;
-                if (*ch8.video[x + rownum] == 1)
-                {
-                    SDL_RenderFillRect(renderer, &pixel);
-                }
-            }
-        }
-        SDL_RenderPresent(renderer);
     }
 
     return 0;
-}
-
-void chip8_initialization(Chip8 *ch8, FILE *file)
-{
-    int i;
-
-    fread(ch8->memory + 0x200, 1, 4096 - 0x200, file);
-    for (i = 0; i < FONTSET_SIZE; i++)
-    {
-        ch8->memory[i] = fontset[i];
-    }
-    memset(ch8->video, 0, sizeof(ch8->video));
-    memset(ch8->stack, 0, sizeof(ch8->stack));
-    memset(ch8->V, 0, sizeof(ch8->V));
-
-    ch8->PC = 0x200;
-    ch8->SP &= 0;
-    ch8->opcode = 0x200;
 }
 
 void draw_screen(Chip8 *ch8)
@@ -194,8 +104,7 @@ void execute_opcodes(Chip8 *ch8)
             ch8->PC = (ch8->opcode & 0x0FFF);
             break;
         case 0x3000:
-            uint8_t target_reg = (ch8->opcode & 0x0F00) >> 8;
-            if (ch8->V[target_reg] == (ch8->opcode & 0x00FFF))
+            if (ch8->V[((ch8->opcode & 0x0F00) >> 8)] == (ch8->opcode & 0x00FFF))
             {
                 ch8->PC += 4;
             }
@@ -231,11 +140,11 @@ void execute_opcodes(Chip8 *ch8)
                 {
                     if ((pixel & (0x80 >> j)) != 0)
                     {
-                        if (ch8->video[y + j][x + i] == 1)
+                        /*  if (ch8->video[y + j][x + i] == 1)
                         {
                             ch8->V[0xF] = 1;
-                        }
-                        ch8->video[y + j][x + i] ^= 1;
+                        } */
+                        //ch8->video[y + j][x + i] ^= 1;
                     }
                 }
             }
@@ -243,7 +152,6 @@ void execute_opcodes(Chip8 *ch8)
             break;
         default:
             printf("Wrong opcode: %X\n", ch8->opcode);
-            getchar();
             break;
         }
     }
