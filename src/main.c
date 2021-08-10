@@ -86,7 +86,7 @@ void execute_opcodes(Chip8 *ch8)
         switch (ch8->opcode & 0x000F)
         {
         case 0x0000:
-            memset(ch8->video, 0, sizeof(ch8->video));
+            memset(ch8->video, 0xFF000000, sizeof(ch8->video));
             ch8->PC += 2;
             break;
         case 0x000E:
@@ -96,6 +96,7 @@ void execute_opcodes(Chip8 *ch8)
         break;
     case 0x1000:
         ch8->PC = ch8->opcode & 0x0FFF;
+        ch8->PC += 2;
         break;
     case 0x2000:
         ch8->stack[ch8->SP] = ch8->PC;
@@ -145,6 +146,7 @@ void execute_opcodes(Chip8 *ch8)
         ch8->PC += 2;
         break;
     case 0xD000:
+    {
         Vx = (ch8->opcode & 0x0F00) >> 8;
         Vy = (ch8->opcode & 0x00F0) >> 4;
         uint8_t n = ch8->opcode & 0x000F;
@@ -153,6 +155,7 @@ void execute_opcodes(Chip8 *ch8)
         uint8_t yPos = ch8->V[Vy] % 32;
 
         ch8->V[0xF] = 0;
+        printf("SPRITE HEIGHTT %i\n", n);
 
         for (unsigned int row = 0; row < n; ++row)
         {
@@ -174,6 +177,10 @@ void execute_opcodes(Chip8 *ch8)
             }
         }
         ch8->drawScreen = true;
+        ch8->PC += 2;
+    }
+    break;
+    case 0xE000:
         break;
     default:
         printf("Wrong opcode: %X\n", ch8->opcode);
