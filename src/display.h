@@ -8,5 +8,5 @@ typedef struct Display
 } Display;
 
 void display_init(Display *display);
-void buffer_graphics(Chip8 *ch8, uint32_t *buffer, SDL_Renderer *renderer);
-void display_draw(Display *display, uint32_t *buffer);
+void display_draw(Display *display, uint32_t pixels[64 * 32]);
+void display_cleanup(Display *display);

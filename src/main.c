@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
     fread(&ch8.memory[STARTING_MEM_ADDRESS], 1, (4096 - 0x200), file);
     fclose(file);
 
-    uint32_t *pixel_buffer = malloc((640 * 320) * sizeof(uint32_t));
     chip8_initialization(&ch8);
     Display display;
 
@@ -47,14 +46,14 @@ int main(int argc, char *argv[])
     SDL_Event event;
 
     bool running = true;
+
     while (running) // main loop starts here
     {
         start_tick = SDL_GetTicks();
         cycle(&ch8);
-        if (ch8.drawScreen)
+        if (ch8.drawScreen == true)
         {
-            buffer_graphics(&ch8, pixel_buffer, &display.renderer);
-            display_draw(&display, pixel_buffer);
+            display_draw(&display, ch8.video);
             ch8.drawScreen = false;
         }
 
@@ -72,14 +71,13 @@ int main(int argc, char *argv[])
             }
         }
     }
-
+    display_cleanup(&display);
     return 0;
 }
 
 void execute_opcodes(Chip8 *ch8)
 {
-    int y, x, Vx, Vy, times, i;
-    unsigned height, pixel;
+    uint8_t Vx, Vy;
 
     printf("Executing %04X at %04X , I:%02X SP:%02X\n", ch8->opcode, ch8->PC, ch8->index_register, ch8->SP);
     switch (ch8->opcode & 0xF000)
@@ -149,29 +147,33 @@ void execute_opcodes(Chip8 *ch8)
     case 0xD000:
         Vx = (ch8->opcode & 0x0F00) >> 8;
         Vy = (ch8->opcode & 0x00F0) >> 4;
-        height = (ch8->opcode & 0x000F); // N in the opcode
-        x = ch8->V[Vx];
-        y = ch8->V[Vy];
-        uint8_t pixel;
-        //this is crashing fix it
+        uint8_t n = ch8->opcode & 0x000F;
+
+        uint8_t xPos = ch8->V[Vx] % 64;
+        uint8_t yPos = ch8->V[Vy] % 32;
+
         ch8->V[0xF] = 0;
-        for (i = 0; i < height; i++)
+
+        for (unsigned int row = 0; row < n; ++row)
         {
-            pixel = ch8->memory[ch8->index_register + i];
-            for (int j = 0; j < 8; j++)
+            uint8_t spriteByte = ch8->memory[ch8->index_register + row];
+
+            for (unsigned int col = 0; col < 8; ++col)
             {
-                if ((pixel & (0x80 >> j)) != 0)
+                uint8_t spritePixel = spriteByte & (0x80 >> col);
+                uint32_t *screenPixel = &ch8->video[(yPos + row) + 64 + (xPos + col)];
+
+                if (spritePixel)
                 {
-                    if (ch8->video[x + j + ((y + (i / 2)) * 640)] == 1)
+                    if (*screenPixel == 0xFFFFFFFF)
                     {
                         ch8->V[0xF] = 1;
                     }
-                    ch8->video[x + j + ((y + (i / 2)) * 640)] ^= 1;
+                    *screenPixel ^= 0xFFFFFFFF;
                 }
             }
         }
         ch8->drawScreen = true;
-        ch8->PC += 2;
         break;
     default:
         printf("Wrong opcode: %X\n", ch8->opcode);
