@@ -17,4 +17,4 @@ typedef struct Chip8
     bool drawScreen;
 } Chip8;
 
-void chip8_initialization(Chip8 *ch8, FILE *file);
+void chip8_initialization(Chip8 *ch8);

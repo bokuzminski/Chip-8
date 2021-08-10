@@ -5,14 +5,8 @@
 #include "chip8.h"
 #include "fontset.h"
 
-void chip8_initialization(Chip8 *ch8, FILE *file)
+void chip8_initialization(Chip8 *ch8)
 {
-    if (!file)
-    {
-        fprintf(stderr, "Unable to open the game ROM");
-    }
-    fread(ch8->memory[0x200], 1, (4096 - 0x200), file);
-    fclose(file);
 
     int i;
 

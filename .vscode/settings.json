@@ -1,6 +1,8 @@
 {
   "files.associations": {
     "chip8.h": "c",
-    "display.h": "c"
+    "display.h": "c",
+    "sdl.h": "c",
+    "fontset.h": "c"
   }
 }

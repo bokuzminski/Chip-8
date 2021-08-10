@@ -7,5 +7,6 @@ typedef struct Display
     SDL_Texture *texture;
 } Display;
 
-int display_init(Display *display);
-void display_draw(Display *display, uint32_t pixels[64][32]);
+void display_init(Display *display);
+void buffer_graphics(Chip8 *ch8, uint32_t *buffer, SDL_Renderer *renderer);
+void display_draw(Display *display, uint32_t *buffer);
