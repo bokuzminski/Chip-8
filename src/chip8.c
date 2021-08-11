@@ -7,7 +7,11 @@
 
 void chip8_initialization(Chip8 *ch8)
 {
-    //  memcpy(ch8->memory, fontset, sizeof(fontset));
+    for (size_t i = 0; i < 80; i++)
+    {
+        ch8->memory[0x50 + i] = fontset[i];
+    }
+
     memset(ch8->video, 0xFF000000, sizeof(ch8->video));
     memset(ch8->stack, 0, sizeof(ch8->stack));
     memset(ch8->V, 0, sizeof(ch8->V));

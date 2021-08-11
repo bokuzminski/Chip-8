@@ -5,7 +5,7 @@
 
 void display_init(Display *display)
 {
-    SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_Init(SDL_INIT_VIDEO);
 
     display->window = SDL_CreateWindow(
         "CHIP-8",               // window label
@@ -13,23 +13,20 @@ void display_init(Display *display)
         SDL_WINDOWPOS_CENTERED, // initial y position
         640,
         320,
-        SDL_WINDOW_SHOWN |
-            SDL_WINDOW_OPENGL |
-            SDL_WINDOW_RESIZABLE |
-            SDL_WINDOW_ALLOW_HIGHDPI // flags
+        SDL_WINDOW_SHOWN // flags
     );
     if (display->window == NULL)
     {
         printf("Could not create SDL Window: %s\n", SDL_GetError());
         exit(1);
     }
-    display->renderer = SDL_CreateRenderer(display->window, -1, 0);
+    display->renderer = SDL_CreateRenderer(display->window, -1, SDL_RENDERER_ACCELERATED);
     if (display->renderer == NULL)
     {
         printf("Could not create SDL Renderer: %s\n", SDL_GetError());
         exit(1);
     }
-    display->texture = SDL_CreateTexture(display->renderer, SDL_PIXELFORMAT_RGBA8888,
+    display->texture = SDL_CreateTexture(display->renderer, SDL_PIXELFORMAT_ARGB8888,
                                          SDL_TEXTUREACCESS_TARGET,
                                          64,
                                          32);
