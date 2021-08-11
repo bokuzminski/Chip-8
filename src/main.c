@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    fread(&ch8.memory[STARTING_MEM_ADDRESS], 1, (4096 - 0x200), file);
+    fread(&ch8.memory[STARTING_MEM_ADDRESS], 1, (4096 - STARTING_MEM_ADDRESS), file);
     fclose(file);
 
     chip8_initialization(&ch8);
