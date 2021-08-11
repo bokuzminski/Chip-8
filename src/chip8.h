@@ -18,3 +18,6 @@ typedef struct Chip8
 } Chip8;
 
 void chip8_initialization(Chip8 *ch8);
+void fetch_opcodes(Chip8 *ch8);
+void cycle(Chip8 *ch8);
+void execute_opcodes(Chip8 *ch8);
