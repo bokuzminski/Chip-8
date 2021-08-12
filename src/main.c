@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include "chip8.h"
@@ -9,6 +10,7 @@
 #define SCREEN_W 640
 #define SCREEN_H 320
 #define SCREEN_BPP 32
+#define MS_PER_CYCLE (1000 / 60)
 #define W 64
 #define H 32
 
@@ -48,16 +50,26 @@ int main(int argc, char *argv[])
         }
 
         frame_speed = SDL_GetTicks() - start_tick;
-        if (frame_speed < (1000 / 60))
+        if (frame_speed < MS_PER_CYCLE)
         {
-            SDL_Delay((1000 / 60) - frame_speed);
+            SDL_Delay(MS_PER_CYCLE - frame_speed);
         }
 
         while (SDL_PollEvent(&event))
         {
-            if (event.type == SDL_QUIT)
+            if (event.type == SDL_KEYDOWN)
             {
-                running = false;
+                switch (event.key.keysym.sym)
+                {
+                case SDLK_ESCAPE:
+                    running = false;
+                    break;
+                case SDL_QUIT:
+                    running = false;
+                    break;
+                default:
+                    break;
+                }
             }
         }
     }
