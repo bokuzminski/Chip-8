@@ -7,9 +7,9 @@
 
 void chip8_initialization(Chip8 *ch8)
 {
-    for (size_t i = 0; i < 80; i++)
+    for (int i = 0; i < 80; i++)
     {
-        ch8->memory[0x50 + i] = fontset[i];
+        ch8->memory[i] = fontset[i];
     }
 
     memset(ch8->video, 0xFF000000, sizeof(ch8->video));
@@ -55,7 +55,6 @@ void update_timers(Chip8 *ch8)
 
 void execute_opcodes(Chip8 *ch8)
 {
-    uint8_t Vx, Vy, xPos, yPos, rand_num;
 
     printf("Executing 0x%04X at %04X , I:%02X SP:%02X\n", ch8->opcode, ch8->PC, ch8->index_register, ch8->SP);
 
@@ -65,10 +64,12 @@ void execute_opcodes(Chip8 *ch8)
         switch (ch8->opcode & 0x00FF)
         {
         case 0x00E0:
+        {
             memset(ch8->video, 0, sizeof(ch8->video));
             ch8->drawScreen = true;
             ch8->PC += 2;
             break;
+        }
         case 0x00EE:
         {
             ch8->SP--;
@@ -98,7 +99,11 @@ void execute_opcodes(Chip8 *ch8)
         {
             ch8->PC += 4;
         }
-        ch8->PC += 2;
+        else
+        {
+
+            ch8->PC += 2;
+        }
         break;
     }
     case 0x4000:
@@ -158,7 +163,7 @@ void execute_opcodes(Chip8 *ch8)
             uint8_t x = (ch8->opcode & 0x0F00) >> 8;
             uint8_t y = (ch8->opcode & 0x00F0) >> 4;
 
-            ch8->V[x] &= ch8->V[y];
+            ch8->V[x] = ch8->V[x] & ch8->V[y];
             ch8->PC += 2;
             break;
         }
@@ -210,8 +215,8 @@ void execute_opcodes(Chip8 *ch8)
         {
             uint8_t x = (ch8->opcode & 0x0F00) >> 8;
 
-            ch8->V[0xF] = (ch8->V[x] & 0x1);
             ch8->V[x] >>= 1;
+            ch8->V[0xF] = (ch8->V[x] & 0x1);
             ch8->PC += 2;
             break;
         }
@@ -263,19 +268,22 @@ void execute_opcodes(Chip8 *ch8)
         ch8->PC = ((ch8->opcode & 0x0FFF) + ch8->V[0x0]);
         break;
     case 0xC000:
-        rand_num = rand() % 256;
+    {
+        uint8_t rand_num = rand() % 256;
+
         ch8->V[(ch8->opcode & 0x0F00) >> 8] = rand_num + (ch8->opcode & 0x00FF);
         ch8->PC += 2;
         break;
+    }
     case 0xD000:
     {
-        Vx = (ch8->opcode & 0x0F00) >> 8;
-        Vy = (ch8->opcode & 0x00F0) >> 4;
+        uint8_t Vx = (ch8->opcode & 0x0F00) >> 8;
+        uint8_t Vy = (ch8->opcode & 0x00F0) >> 4;
 
         uint8_t n = (ch8->opcode & 0x000F);
 
-        xPos = ch8->V[Vx];
-        yPos = ch8->V[Vy];
+        uint8_t xPos = ch8->V[Vx];
+        uint8_t yPos = ch8->V[Vy];
 
         ch8->V[0xF] = 0;
 
@@ -342,9 +350,10 @@ void execute_opcodes(Chip8 *ch8)
         {
             uint8_t x = (ch8->opcode & 0x0F00) >> 8;
 
-            if (ch8->keys[0])
+            /* if (ch8->keys[0])
             {
                 ch8->V[x] = 0;
+                ch8->PC += 2;
             }
             else if (ch8->keys[1])
             {
@@ -405,9 +414,7 @@ void execute_opcodes(Chip8 *ch8)
             else if (ch8->keys[15])
             {
                 ch8->V[x] = 15;
-            }
-
-            ch8->PC -= 2;
+            } */
             break;
         }
         case 0x0015:
@@ -439,7 +446,7 @@ void execute_opcodes(Chip8 *ch8)
             {
                 ch8->memory[ch8->index_register + i] = ch8->V[i];
             }
-            // ch8->index_register += (end_v_reg + 1);
+            ch8->index_register += (end_v_reg + 1);
             ch8->PC += 2;
             break;
         }
