@@ -6,14 +6,6 @@
 
 #undef main
 
-#define STARTING_MEM_ADDRESS 0x200
-#define SCREEN_W 640
-#define SCREEN_H 320
-#define SCREEN_BPP 32
-#define MS_PER_CYCLE (1000 / 60)
-#define W 64
-#define H 32
-
 int main(int argc, char *argv[])
 {
     Chip8 ch8;
