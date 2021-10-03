@@ -31,6 +31,7 @@ void chip8_initialization(Chip8 *ch8)
 void fetch_opcodes(Chip8 *ch8)
 {
     ch8->opcode = ch8->memory[ch8->PC] << 8 | ch8->memory[ch8->PC + 1];
+    ch8->PC += 2;
 }
 
 void cycle(Chip8 *ch8)
@@ -55,6 +56,11 @@ void update_timers(Chip8 *ch8)
 
 void execute_opcodes(Chip8 *ch8)
 {
+    uint8_t X = (ch8->opcode & 0x0F00) >> 8;
+    uint8_t Y = (ch8->opcode & 0x00F0) >> 4;
+    uint8_t N = ch8->opcode & 0x000F;
+    uint16_t NN = ch8->opcode & 0x00FF;
+    uint16_t NNN = ch8->opcode & 0x0FFF;
 
     printf("Executing 0x%04X at %04X , I:%02X SP:%02X\n", ch8->opcode, ch8->PC, ch8->index_register, ch8->SP);
 
@@ -67,117 +73,83 @@ void execute_opcodes(Chip8 *ch8)
         {
             memset(ch8->video, 0, sizeof(ch8->video));
             ch8->drawScreen = true;
-            ch8->PC += 2;
             break;
         }
         case 0x00EE:
         {
             ch8->SP--;
             ch8->PC = ch8->stack[ch8->SP];
-            ch8->PC += 2;
             break;
         }
         }
         break;
     case 0x1000:
     {
-        uint16_t nnn = ch8->opcode & 0x0FFF;
-        ch8->PC = nnn;
+        ch8->PC = NNN;
         break;
     }
     case 0x2000:
         ch8->stack[ch8->SP] = ch8->PC;
         ch8->SP++;
-        ch8->PC = (ch8->opcode & 0x0FFF);
+        ch8->PC = NNN;
         break;
     case 0x3000:
     {
-        uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-        uint8_t kk = ch8->opcode & 0x00FF;
-
-        if (ch8->V[x] == kk)
+        if (ch8->V[X] == NN)
         {
-            ch8->PC += 4;
-        }
-        else
-        {
-
             ch8->PC += 2;
         }
         break;
     }
     case 0x4000:
     {
-        uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-        uint8_t kk = ch8->opcode & 0x00FF;
-
-        if (ch8->V[x] != kk)
-        {
-            ch8->PC += 4;
-        }
-        ch8->PC += 2;
-        break;
-    }
-    case 0x5000:
-        if (ch8->V[(ch8->opcode & 0x0F00) >> 8] == ch8->V[(ch8->opcode & 0x00F0) >> 4])
-        {
-            ch8->PC += 4;
-        }
-        else
+        if (ch8->V[X] != NN)
         {
             ch8->PC += 2;
         }
         break;
+    }
+    case 0x5000:
+    {
+        if (ch8->V[X] == ch8->V[Y])
+        {
+            ch8->PC += 2;
+        }
+        break;
+    }
     case 0x6000:
-        ch8->V[(ch8->opcode & 0x0F00) >> 8] = (ch8->opcode & 0x00FF);
-        ch8->PC += 2;
+        ch8->V[X] = NN;
         break;
     case 0x7000:
-        ch8->V[(ch8->opcode & 0x0F00) >> 8] += (ch8->opcode & 0x00FF);
+        ch8->V[X] += NN;
         ch8->PC += 2;
         break;
     case 0x8000:
-        switch (ch8->opcode & 0x000F)
+        switch (N)
         {
         case 0x0000:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-
-            ch8->V[x] = ch8->V[y];
-
+            ch8->V[X] = ch8->V[Y];
             break;
         }
         case 0x0001:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-
-            ch8->V[x] = ch8->V[x] | ch8->V[y];
-
+            ch8->V[X] = ch8->V[X] | ch8->V[Y];
             break;
         }
         case 0x0002:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-
-            ch8->V[x] = ch8->V[x] & ch8->V[y];
+            ch8->V[X] = ch8->V[X] & ch8->V[Y];
             break;
         }
         case 0x0003:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-
-            ch8->V[x] ^= ch8->V[y];
+            ch8->V[X] ^= ch8->V[Y];
             break;
         }
         case 0x0004:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-            uint16_t sum = ch8->V[x] + ch8->V[y];
+            uint16_t sum = ch8->V[X] + ch8->V[Y];
 
             if (sum > 255)
             {
@@ -187,15 +159,12 @@ void execute_opcodes(Chip8 *ch8)
             {
                 ch8->V[0xF] = 0;
             }
-            ch8->V[x] = sum & 0xFF;
+            ch8->V[X] = sum & 0xFF;
             break;
         }
         case 0x0005:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-
-            if (ch8->V[x] > ch8->V[y])
+            if (ch8->V[X] > ch8->V[Y])
             {
                 ch8->V[0xF] = 1;
             }
@@ -203,24 +172,19 @@ void execute_opcodes(Chip8 *ch8)
             {
                 ch8->V[0xF] = 0;
             }
-            ch8->V[x] -= ch8->V[y];
+            ch8->V[X] -= ch8->V[Y];
             break;
         }
         case 0x0006:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
 
-            ch8->V[x] >>= 1;
-            ch8->V[0xF] = (ch8->V[x] & 0x1);
-            ch8->PC += 2;
+            ch8->V[X] >>= 1;
+            ch8->V[0xF] = (ch8->V[X] & 0x1);
             break;
         }
         case 0x0007:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-            uint8_t y = (ch8->opcode & 0x00F0) >> 4;
-
-            if (ch8->V[y] > ch8->V[x])
+            if (ch8->V[Y] > ch8->V[X])
             {
                 ch8->V[0xF] = 1;
             }
@@ -228,16 +192,13 @@ void execute_opcodes(Chip8 *ch8)
             {
                 ch8->V[0xF] = 0;
             }
-            ch8->V[x] = ch8->V[y] - ch8->V[x];
-            ch8->PC += 2;
+            ch8->V[X] = ch8->V[Y] - ch8->V[X];
             break;
         }
         case 0x000E:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-
-            ch8->V[0xF] = (ch8->V[x] & 0x80) >> 7;
-            ch8->V[x] <<= 1;
+            ch8->V[0xF] = (ch8->V[X] & 0x80) >> 7;
+            ch8->V[X] <<= 1;
             break;
         }
         default:
@@ -245,44 +206,32 @@ void execute_opcodes(Chip8 *ch8)
             exit(-1);
         }
     case 0x9000:
-        if (ch8->V[(ch8->opcode & 0x0F00) >> 8] != ch8->V[(ch8->opcode & 0x00F0) >> 4])
+        if (ch8->V[X] != ch8->V[Y])
         {
-            ch8->PC += 4;
-        }
-        else
-        {
-
             ch8->PC += 2;
         }
         break;
     case 0xA000:
-        ch8->index_register = ch8->opcode & 0x0FFF;
-        ch8->PC += 2;
+        ch8->index_register = NNN;
         break;
     case 0xB000:
-        ch8->PC = ((ch8->opcode & 0x0FFF) + ch8->V[0x0]);
+        ch8->PC = (NNN + ch8->V[0x0]);
         break;
     case 0xC000:
     {
         uint8_t rand_num = rand() % 256;
 
-        ch8->V[(ch8->opcode & 0x0F00) >> 8] = rand_num + (ch8->opcode & 0x00FF);
-        ch8->PC += 2;
+        ch8->V[X] = rand_num + NN;
         break;
     }
     case 0xD000:
     {
-        uint8_t Vx = (ch8->opcode & 0x0F00) >> 8;
-        uint8_t Vy = (ch8->opcode & 0x00F0) >> 4;
-
-        uint8_t n = (ch8->opcode & 0x000F);
-
-        uint8_t xPos = ch8->V[Vx];
-        uint8_t yPos = ch8->V[Vy];
+        uint8_t xPos = ch8->V[X];
+        uint8_t yPos = ch8->V[Y];
 
         ch8->V[0xF] = 0;
 
-        for (unsigned int row = 0; row < n; ++row)
+        for (unsigned int row = 0; row < N; ++row)
         {
             uint8_t spriteByte = ch8->memory[ch8->index_register + row];
 
@@ -302,47 +251,40 @@ void execute_opcodes(Chip8 *ch8)
             }
         }
         ch8->drawScreen = true;
-        ch8->PC += 2;
+        break;
     }
-    break;
     case 0xE000:
     {
-        switch (ch8->opcode & 0x00FF)
+        switch (NN)
         {
         case 0x009E:
-            if (ch8->keys[ch8->V[(ch8->opcode & 0x0F00) >> 8]] != 0)
-            {
-                ch8->PC += 4;
-            }
-            else
+        {
+
+            if (ch8->keys[ch8->V[X]] != 0)
             {
                 ch8->PC += 2;
             }
             break;
+        }
         case 0x00A1:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-
-            if (!ch8->keys[ch8->V[x]])
+            if (!ch8->keys[ch8->V[X]])
             {
-                ch8->PC += 4;
+                ch8->PC += 2;
             }
-            ch8->PC += 2;
             break;
         }
+        default:
+            break;
         }
         break;
     }
-    break;
     case 0xF000:
-        switch (ch8->opcode & 0x00FF)
+        switch (NN)
         {
         case 0x0007:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-
-            ch8->V[x] = ch8->delay_timer;
-            ch8->PC += 2;
+            ch8->V[X] = ch8->delay_timer;
             break;
         }
         case 0x000A:
@@ -352,7 +294,6 @@ void execute_opcodes(Chip8 *ch8)
             if (ch8->keys[0])
             {
                 ch8->V[x] = 0;
-                ch8->PC += 2;
             }
             else if (ch8->keys[1])
             {
@@ -417,59 +358,53 @@ void execute_opcodes(Chip8 *ch8)
             break;
         }
         case 0x0015:
-            ch8->delay_timer = ch8->V[(ch8->opcode & 0x0F00) >> 8];
-            ch8->PC += 2;
+            ch8->delay_timer = ch8->V[X];
             break;
         case 0x0018:
-            ch8->sound_timer = ch8->V[(ch8->opcode & 0x0F00) >> 8];
-            ch8->PC += 2;
+            ch8->sound_timer = ch8->V[X];
             break;
         case 0x001E:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-
-            ch8->index_register += ch8->V[x];
-            ch8->PC += 2;
+            ch8->index_register += ch8->V[X];
             break;
         }
         case 0x0029:
         {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-
-            ch8->index_register = ch8->V[x] * 5;
-            ch8->PC += 2;
+            ch8->index_register = ch8->V[X] * 5;
             break;
         }
         case 0x0033:
-            ch8->memory[ch8->index_register] = ch8->V[(ch8->opcode & 0x0F00) >> 8] / 100;
-            ch8->memory[ch8->index_register + 1] = (ch8->V[(ch8->opcode & 0x0F00) >> 8] / 10) % 10;
-            ch8->memory[ch8->index_register + 2] = (ch8->V[(ch8->opcode & 0x0F00) >> 8] % 100) % 10;
-            ch8->PC += 2;
+        {
+            ch8->memory[ch8->index_register] = ch8->V[X] / 100;
+            ch8->memory[ch8->index_register + 1] = (ch8->V[X] / 10) % 10;
+            ch8->memory[ch8->index_register + 2] = (ch8->V[X] % 100) % 10;
             break;
+        }
         case 0x0055:
         {
-            uint8_t end_v_reg = (ch8->opcode & 0x0F00) >> 8;
-
-            for (size_t i = 0; i < end_v_reg; i++)
+            for (size_t i = 0; i < X + 1; i++)
             {
-                ch8->memory[ch8->index_register + i] = ch8->V[i];
+                ch8->index_register += (X + 1);
             }
-            // ch8->index_register += (end_v_reg + 1);
-            ch8->PC += 2;
+
             break;
         }
         case 0x0065:
-            for (int l = 0; l < ((ch8->opcode & 0x0F00) >> 8); l++)
+        {
+            for (int l = 0; l <= X; l++)
             {
                 ch8->V[l] = ch8->memory[ch8->index_register + l];
             }
-            ch8->PC += 2;
+            ch8->index_register += X + 1;
             break;
+        }
         default:
             printf("ERROR: Unrecognized opcode 0x%X\n", ch8->opcode);
+            break;
         }
         break;
     default:
         printf("Wrong opcode: 0x%X\n", ch8->opcode);
+        break;
     }
 }
