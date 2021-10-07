@@ -384,9 +384,9 @@ void execute_opcodes(Chip8 *ch8)
         {
             for (size_t i = 0; i < X + 1; i++)
             {
-                ch8->index_register += (X + 1);
+                ch8->memory[ch8->index_register + i] = ch8->V[i];
             }
-
+            ch8->index_register = ch8->index_register + X + 1;
             break;
         }
         case 0x0065:
