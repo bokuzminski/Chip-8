@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
+
 #define STARTING_MEM_ADDRESS 0x200
 #define SCREEN_W 640
 #define SCREEN_H 320
