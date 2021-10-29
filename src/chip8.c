@@ -62,12 +62,13 @@ void execute_opcodes(Chip8 *ch8)
     uint16_t NN = ch8->opcode & 0x00FF;
     uint16_t NNN = ch8->opcode & 0x0FFF;
 
-    printf("Executing 0x%04X at %04X , I:%02X SP:%02X\n", ch8->opcode, ch8->PC, ch8->index_register, ch8->SP);
+    printf("Executing 0x%04X at PC:%04X , I:%02X SP:%02X\n", ch8->opcode, ch8->PC, ch8->index_register, ch8->SP);
 
     switch (ch8->opcode & 0xF000)
     {
     case 0x0000:
-        switch (ch8->opcode & 0x00FF)
+    {
+        switch (NN)
         {
         case 0x00E0:
         {
@@ -77,27 +78,34 @@ void execute_opcodes(Chip8 *ch8)
         }
         case 0x00EE:
         {
-            ch8->SP--;
             ch8->PC = ch8->stack[ch8->SP];
+            ch8->SP--;
             break;
         }
+        default:
+            printf("Unsupported opcode at 0x%X", ch8->opcode);
+            break;
         }
         break;
+    }
     case 0x1000:
     {
         ch8->PC = NNN;
         break;
     }
     case 0x2000:
-        ch8->stack[ch8->SP] = ch8->PC;
+    {
         ch8->SP++;
+        ch8->stack[ch8->SP] = ch8->PC;
         ch8->PC = NNN;
         break;
+    }
     case 0x3000:
     {
         if (ch8->V[X] == NN)
         {
             ch8->PC += 2;
+            break;
         }
         break;
     }
@@ -106,6 +114,7 @@ void execute_opcodes(Chip8 *ch8)
         if (ch8->V[X] != NN)
         {
             ch8->PC += 2;
+            break;
         }
         break;
     }
@@ -118,13 +127,17 @@ void execute_opcodes(Chip8 *ch8)
         break;
     }
     case 0x6000:
+    {
         ch8->V[X] = NN;
         break;
+    }
     case 0x7000:
+    {
         ch8->V[X] += NN;
-        ch8->PC += 2;
         break;
+    }
     case 0x8000:
+    {
         switch (N)
         {
         case 0x0000:
@@ -170,16 +183,16 @@ void execute_opcodes(Chip8 *ch8)
             }
             else
             {
+
                 ch8->V[0xF] = 0;
             }
-            ch8->V[X] -= ch8->V[Y];
+            ch8->V[X] = ch8->V[X] - ch8->V[Y];
             break;
         }
         case 0x0006:
         {
-
-            ch8->V[X] >>= 1;
-            ch8->V[0xF] = (ch8->V[X] & 0x1);
+            ch8->V[0xF] = ch8->V[X] & 7;
+            ch8->V[X] = ch8->V[X] >> 1;
             break;
         }
         case 0x0007:
@@ -197,31 +210,111 @@ void execute_opcodes(Chip8 *ch8)
         }
         case 0x000E:
         {
-            ch8->V[0xF] = (ch8->V[X] & 0x80) >> 7;
-            ch8->V[X] <<= 1;
+            ch8->V[0xF] = ch8->V[X] >> 7;
+            ch8->V[X] = ch8->V[X] << 1;
             break;
         }
         default:
-            printf("Unknown opcode 8XY%x", ch8->opcode);
-            exit(-1);
+            printf("Wrong opcode at 0x%X", ch8->opcode);
+            break;
         }
+        break;
+    }
     case 0x9000:
+    {
         if (ch8->V[X] != ch8->V[Y])
         {
             ch8->PC += 2;
         }
         break;
-    case 0xA000:
-        ch8->index_register = NNN;
-        break;
-    case 0xB000:
-        ch8->PC = (NNN + ch8->V[0x0]);
-        break;
+    }
     case 0xC000:
     {
-        uint8_t rand_num = rand() % 256;
-
-        ch8->V[X] = rand_num + NN;
+        uint8_t rand_number = rand() % 256;
+        ch8->V[X] = rand_number & NN;
+        break;
+    }
+    case 0xF000:
+    {
+        switch (NN)
+        {
+        case 0x0007:
+        {
+            ch8->V[X] = ch8->delay_timer;
+            break;
+        }
+        case 0x0015:
+        {
+            ch8->delay_timer = ch8->V[X];
+            break;
+        }
+        case 0x0018:
+        {
+            ch8->sound_timer = ch8->V[X];
+            break;
+        }
+        case 0x0029:
+        {
+            ch8->index_register = ch8->V[X] * 5;
+            break;
+        }
+        case 0x0033:
+        {
+            ch8->memory[ch8->index_register] = ch8->V[X] / 100;
+            ch8->memory[ch8->index_register + 1] = (ch8->V[X] / 10) % 10;
+            ch8->memory[ch8->index_register + 2] = (ch8->V[X] % 100) % 10;
+            break;
+        }
+        case 0x0055:
+        {
+            for (size_t i = 0; i < X + 1; i++)
+            {
+                ch8->memory[ch8->index_register + i] = ch8->V[i];
+            }
+            ch8->index_register = ch8->index_register + X + 1;
+            break;
+        }
+        case 0x0065:
+        {
+            for (int l = 0; l <= X; l++)
+            {
+                ch8->V[l] = ch8->memory[ch8->index_register + l];
+            }
+            ch8->index_register += X + 1;
+            break;
+        }
+        case 0x001E:
+        {
+            ch8->index_register += ch8->V[X];
+            break;
+        }
+        default:
+            printf("Wrong opcode 0x%X\n", ch8->opcode);
+            break;
+        }
+        break;
+    }
+    case 0xA000:
+    {
+        ch8->index_register = NNN;
+        break;
+    }
+    case 0xE000:
+    {
+        switch (NN)
+        {
+        case 0x00A1:
+        {
+            if (!ch8->keys[ch8->V[X]])
+            {
+                ch8->PC += 2;
+            }
+            break;
+        }
+        default:
+            printf("Unknown opcode at 0xE%X", ch8->opcode);
+            break;
+        }
         break;
     }
     case 0xD000:
@@ -253,156 +346,7 @@ void execute_opcodes(Chip8 *ch8)
         ch8->drawScreen = true;
         break;
     }
-    case 0xE000:
-    {
-        switch (NN)
-        {
-        case 0x009E:
-        {
 
-            if (ch8->keys[ch8->V[X]] != 0)
-            {
-                ch8->PC += 2;
-            }
-            break;
-        }
-        case 0x00A1:
-        {
-            if (!ch8->keys[ch8->V[X]])
-            {
-                ch8->PC += 2;
-            }
-            break;
-        }
-        default:
-            break;
-        }
-        break;
-    }
-    case 0xF000:
-        switch (NN)
-        {
-        case 0x0007:
-        {
-            ch8->V[X] = ch8->delay_timer;
-            break;
-        }
-        case 0x000A:
-        {
-            uint8_t x = (ch8->opcode & 0x0F00) >> 8;
-
-            if (ch8->keys[0])
-            {
-                ch8->V[x] = 0;
-            }
-            else if (ch8->keys[1])
-            {
-                ch8->V[x] = 1;
-            }
-            else if (ch8->keys[2])
-            {
-                ch8->V[x] = 2;
-            }
-            else if (ch8->keys[3])
-            {
-                ch8->V[x] = 3;
-            }
-            else if (ch8->keys[4])
-            {
-                ch8->V[x] = 4;
-            }
-            else if (ch8->keys[5])
-            {
-                ch8->V[x] = 5;
-            }
-            else if (ch8->keys[6])
-            {
-                ch8->V[x] = 6;
-            }
-            else if (ch8->keys[7])
-            {
-                ch8->V[x] = 7;
-            }
-            else if (ch8->keys[8])
-            {
-                ch8->V[x] = 8;
-            }
-            else if (ch8->keys[9])
-            {
-                ch8->V[x] = 9;
-            }
-            else if (ch8->keys[10])
-            {
-                ch8->V[x] = 10;
-            }
-            else if (ch8->keys[11])
-            {
-                ch8->V[x] = 11;
-            }
-            else if (ch8->keys[12])
-            {
-                ch8->V[x] = 12;
-            }
-            else if (ch8->keys[13])
-            {
-                ch8->V[x] = 13;
-            }
-            else if (ch8->keys[14])
-            {
-                ch8->V[x] = 14;
-            }
-            else if (ch8->keys[15])
-            {
-                ch8->V[x] = 15;
-            }
-            break;
-        }
-        case 0x0015:
-            ch8->delay_timer = ch8->V[X];
-            break;
-        case 0x0018:
-            ch8->sound_timer = ch8->V[X];
-            break;
-        case 0x001E:
-        {
-            ch8->index_register += ch8->V[X];
-            break;
-        }
-        case 0x0029:
-        {
-            ch8->index_register = ch8->V[X] * 5;
-            break;
-        }
-        case 0x0033:
-        {
-            ch8->memory[ch8->index_register] = ch8->V[X] / 100;
-            ch8->memory[ch8->index_register + 1] = (ch8->V[X] / 10) % 10;
-            ch8->memory[ch8->index_register + 2] = (ch8->V[X] % 100) % 10;
-            break;
-        }
-        case 0x0055:
-        {
-            for (size_t i = 0; i < X + 1; i++)
-            {
-                ch8->index_register += (X + 1);
-            }
-
-            break;
-        }
-        case 0x0065:
-        {
-            for (int l = 0; l <= X; l++)
-            {
-                ch8->V[l] = ch8->memory[ch8->index_register + l];
-            }
-            ch8->index_register += X + 1;
-            break;
-        }
-        default:
-            printf("ERROR: Unrecognized opcode 0x%X\n", ch8->opcode);
-            break;
-        }
-        break;
     default:
         printf("Wrong opcode: 0x%X\n", ch8->opcode);
         break;
